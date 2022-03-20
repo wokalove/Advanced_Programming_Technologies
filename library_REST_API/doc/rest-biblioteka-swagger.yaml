@@ -1,0 +1,310 @@
+openapi: '3.0.3'
+info:
+    title: 'System rezerwacji książek - Biblioteka'
+    version: '1.0.0'
+servers:
+    - url: 'http://localhost:5000'
+      description: 'Host testowy'
+security:
+    - testAuth : []
+paths:
+  /users:
+    get:
+        summary: 'Zwraca listę użytkowników.'
+        tags:
+            - 'users'
+        responses:
+            200:
+                description: 'Lista użytkowników zwrócona powodzeniem'
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UsersList'
+    post:
+        summary: 'Dodaje nowego użytkownika do systemu'
+        tags:
+            - 'users'
+        requestBody:
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            username:
+                                nullable: false
+                                type: string
+        responses:
+            200:
+                description: 'Użytkownik dodany do systemu z powodzeniem'
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/User'
+            
+  /users/{id}:
+    get:
+        summary: 'Informacje o koncie użytkownika o podanym id'
+        tags:
+            - 'users'
+        parameters:
+            -   in: path
+                name: 'id'
+                schema:
+                    type: integer
+                required: true
+                description: 'Unikatowy identyfikator użytkownika'
+                example: 10
+            
+        responses:
+            200:
+                description: 'Informacje o koncie użytkownika'
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/User'
+            400:
+                description: 'Nie podano ID użytkownika lub ID w złym formacie'
+            404:
+                description: 'Użytkownik o podanym ID nie istnieje'
+    
+    delete:
+        summary: 'Usuwa użytkownika o podanym {id} z systemu'
+        description: 'Nie można usunąć użytkownika jeśli posiada na koncie nie oddane książki'
+        tags:
+            - 'users'
+        parameters:
+            -   in: path
+                name: 'id'
+                schema:
+                    type: integer
+                required: true
+                description: 'Unikatowy identyfikator użytkownika'
+                example: 10
+        
+        responses:
+            200:
+                description: 'Usunięcie użytkownika z systemu zakończyło się powodzeniem'
+            400:
+                description: 'Nie podano ID uzytkownika lub ID w złym formacie'
+            403:
+                description: 'Nie można usunąć użytkownika z powodu nie zwrócenia wszystkich książek'
+            404:
+                description: 'Użytkownik o podanym ID nie istnieje'
+
+  /books:
+    get:
+        summary: 'Zwraca listę tytułów książek'
+        tags:
+            - 'books'
+        responses:
+            200:
+                description: 'Lista tytułów zwrócona z powodzeniem'
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/TitleBookList'
+              
+  /books/{id}:
+    get:
+        summary: 'Zwraca informacje na temat wypożyczonych egzemplarzy dla tytułu o podanym {id}'
+        tags:
+            - 'books'
+        parameters:
+            -   in: path
+                name: 'id'
+                schema:
+                    type: integer
+                required: true
+                description: 'Unikatowy identyfikator tytułu książki'
+                example: 3
+        responses:
+            200:
+                description: Lista egzemplarzy danego tytułu zwrócona powodzeniem.
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/TitleBookDetails'
+            
+  /books/rent/{id}:
+    patch:
+        summary: 'Operacja wypożyczenie egzemplarza książki o podanym {id}'
+        tags:
+            - 'books'
+        parameters:
+            -   in: path
+                name: 'id'
+                required: true
+                example: 3
+                schema:
+                    type: integer
+                description: 'ID tytułu który jest wypożyczany'
+            
+            -   in: header
+                name: 'user'
+                required: true
+                example: 20
+                schema:
+                    type: integer
+                    description: 'Identyfikator użytkownika który wypożycza książkę'
+        
+        responses:
+            201:
+                description: 'Wypożyczenie egzemplarza zakończone powodzeniem'
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RentalDetalis'
+              
+            400:
+                description: 'Podany identyfikator książki nie istnieje lub jest nieprawidłowy'
+            401:
+                description: 'Podany identyfikator użytkownika nie istnieje lub jest nieprawidłowy'
+            409:
+                description: 'Nie ma dostępnych wolnych egzemplarzy dla podanego identyfikatora książki'
+
+  /books/return/{id}:
+    patch:
+        summary: 'Zwrot wypożyczonego egzemplarza książki o podanym {id}'
+        tags:
+            - 'books'
+        parameters:
+            -   in: path
+                name: 'id'
+                required: true
+                example: 3
+                schema:
+                    type: integer
+                    description: 'Identyfikator książki zwracanej przez użytkownika'
+            -   in: header
+                name: 'user'
+                required: true
+                example: 20
+                schema:
+                    type: integer
+                    description: 'Identyfikator użytkownika który zwraca książkę'
+        responses:
+            201:
+              description: 'Zwrot wypożyczonego egzemplarza zakończony powodzeniem'
+              content:
+                  application/json:
+                  schema:
+                      $ref: '#/components/schemas/TitleBook'
+            400:
+                description: 'Podany identyfikator książki nie istnieje lub jest nieprawidłowy'
+            401:
+                description: 'Podany identyfikator użytkownika nie istnieje lub jest nieprawidłowy'
+            409:
+                description: 'Użytkownik nie ma aktualnie wypożyczonych egzemplarzy dla podanego identyfikatora książki'
+
+components:
+    schemas:
+        User:
+            description: 'Informacje o użytkowniku systemu'
+            properties:
+                uuid:
+                    type: integer
+                    description: 'Unikatowy identyfikator użytkownika'
+                    nullable: false
+                username:
+                    type: string
+                    description: 'Nazwa użytkownika'
+                    nullable: false
+        UsersList:
+            description: 'Lista użytkówników'
+            type: array
+            items: 
+                $ref: '#/components/schemas/User'
+        UserDetails:
+            description: 'Szczegółowe informacje o koncie użytkownika'
+            properties:
+                uuid:
+                    type: integer
+                    description: 'Unikatowy identyfikator użytkownika'
+                    nullable: false
+                username:
+                    type: string
+                    description: 'Nazwa użytkownika'
+                    nullable: false
+                books:
+                    nullable: true
+                    type: array
+                    description: 'Nazwa użytkownika'
+                    items:
+                        type: object
+                        properties:
+                            utid:
+                                type: integer
+                                nullable: false
+                                description: 'Unikatowy identyfikator tytułu książki'
+                            rental_date:
+                                type: string
+                                description: 'Data wypożyczenia egzemplarza'
+                                format: date
+                                nullable: false    
+        TitleBook:
+            description: 'Informacje o tytule książki'
+            properties:
+                utid:
+                    type: integer
+                    nullable: false
+                    description: 'Unikatowy identyfikator tytułu książki'
+                title:
+                    type: string
+                    nullable: false
+                    description: 'Tytuł książki'
+                author:
+                    type: string
+                    nullable: false
+                    description: 'Autor książki'
+                quantity:
+                    type: integer
+                    nullable: false
+                    description: 'Sumaryczna iczba egzemplarzy tytułu w biliotece (wypożyczonych + dostępnych).'
+                rentals:
+                    type: integer
+                    nullable: false
+        TitleBookList:
+            description: 'Lista tytułów'
+            type: array
+            items: 
+                $ref: '#/components/schemas/TitleBook'
+        RentalDetalis:
+            description: 'Szczegóły wypożyczonego egzemplarza'     
+            properties:
+                rental_date:
+                    type: string
+                    description: 'Data wypożyczenia egzemplarza'
+                    format: date
+                    nullable: false
+                uuid:
+                    type: integer
+                    description: 'Unikatowy identyfikator użytkownika'
+                    nullable: false
+        TitleBookDetails:
+            description: 'Informacje o tytule książki z listą wypożyczonych egzemplarzy'      
+            properties:
+                utid:
+                    type: integer
+                    nullable: false
+                    description: 'Unikatowy identyfikator tytułu książki'
+                title:
+                    type: string
+                    nullable: false
+                    description: 'Tytuł książki'
+                author:
+                    type: string
+                    nullable: false
+                    description: 'Autor książki'
+                rental_list:
+                    type: array
+                    description: 'Lista ze szczegółami wypożyczenia danego egzemplarza'
+                    items: 
+                        $ref: '#components/schemas/RentalDetalis'
+             
+        
+       
+
+    securitySchemes:
+        testAuth:
+            type: http
+            scheme: basic
